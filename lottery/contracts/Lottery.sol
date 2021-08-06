@@ -11,13 +11,20 @@ contract Lottery is Ownable {
   mapping (address => uint[]) public ticketByWallet;
   mapping (address => uint) public ticketByWalletTotal;
   uint public funds;
-  LotteryStatus public status;
+  Info public info;
+
+  enum Status {
+    NotStarted,
+    Open,
+    Closed,
+    Completed
+  }
 
   struct Ticket {
     address owner;
   }
 
-  struct LotteryStatus {
+  struct Info {
     uint winnerTicket;
     bool finished;
   }
@@ -28,7 +35,7 @@ contract Lottery is Ownable {
   );
 
   constructor() {
-    status = LotteryStatus(0, false);
+    info = Info(0, false);
   }
 
   function buy() public payable {
@@ -45,15 +52,15 @@ contract Lottery is Ownable {
     emit TicketAcquired(id, msg.sender);
   }
 
-  function roll() public onlyOwner {
-    require(!status.finished, 'lottery already finished');
-    status.winnerTicket = 1;
-    status.finished = true;
+  function draw() public onlyOwner {
+    require(!info.finished, 'lottery already finished');
+    info.winnerTicket = 1;
+    info.finished = true;
   }
 
   function transfer() public onlyOwner {
-    require(status.finished, 'lottery has not finished');
-    payable(tickets[status.winnerTicket].owner).transfer(funds);
+    require(info.finished, 'lottery has not finished');
+    payable(tickets[info.winnerTicket].owner).transfer(funds);
     funds = 0;
   }
 

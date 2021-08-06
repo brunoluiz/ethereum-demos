@@ -82,14 +82,14 @@ describe("Lottery", function () {
       expect(await lottery.ticketsTotal()).to.be.equal(4);
       expect(await lottery.funds()).to.be.equal(parseEther("0.004"));
 
-      let tx = await lottery.roll();
+      let tx = await lottery.draw();
       await tx.wait();
 
       tx = await lottery.transfer();
       await tx.wait();
 
-      const status = await lottery.status();
-      expect(status.finished).to.be.equal(true);
+      const info = await lottery.info();
+      expect(info.finished).to.be.equal(true);
     });
   });
 });
