@@ -35,8 +35,8 @@ contract Lottery is Ownable {
   );
 
   event TicketAcquired (
-    uint id,
     uint lotteryId,
+    uint id,
     address owner
   );
 
@@ -55,7 +55,7 @@ contract Lottery is Ownable {
     lotteries[_lID].tickets.push(msg.sender);
     lotteries[_lID].ticketCount++;
 
-    emit TicketAcquired(id, _lID, msg.sender);
+    emit TicketAcquired(_lID, id, msg.sender);
   }
 
   function draw(uint _lID) public onlyOwner onlyStatus(_lID, Status.Open) {

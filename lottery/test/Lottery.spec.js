@@ -21,7 +21,7 @@ describe("Lottery", function () {
   });
 
   describe("buying tickets", () => {
-    it("should get ticket successfully", async () => {
+    it("should buy ticket successfully", async () => {
       for (let i = 0; i < 2; i++) {
         let tx;
         tx = await lottery
@@ -40,17 +40,30 @@ describe("Lottery", function () {
       expect(await l.funds).to.be.equal(parseEther("0.004"));
     });
 
-    it("should fail to get ticket", async () => {
+    it("should fail to get ticket with incorrect value", async () => {
       await expect(
         lottery.connect(addr1).buy({
           value: ethers.utils.parseEther("0.0005"),
         })
       ).to.be.reverted;
     });
+
+    it("should fail to get ticket after being drawn", async () => {
+      let tx = await lottery.draw(lottoId);
+      await tx.wait();
+
+      let l = await lottery.lotteries(lottoId);
+      expect(l.status, 2);
+      await expect(
+        lottery.connect(addr1).buy({
+          value: ethers.utils.parseEther("0.001"),
+        })
+      ).to.be.reverted;
+    });
   });
 
-  describe("winner", () => {
-    it("should get winner", async () => {
+  describe("drawing lottery", () => {
+    it("should draw numbers and get a winner", async () => {
       for (let i = 0; i < 2; i++) {
         let tx;
         tx = await await lottery.connect(addr1).buy(lottoId, {
@@ -76,6 +89,13 @@ describe("Lottery", function () {
 
       l = await lottery.lotteries(lottoId);
       expect(l.status).to.be.equal(2);
+    });
+
+    it("should revert if try to draw twice", async () => {
+      let tx = await lottery.draw(lottoId);
+      await tx.wait();
+
+      await expect(lottery.draw(lottoId)).to.be.reverted;
     });
   });
 });
