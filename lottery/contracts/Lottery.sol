@@ -5,66 +5,92 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
 
 contract Lottery is Ownable {
-  uint public ticketValue;
-  Ticket[] public tickets;
-  uint public ticketsTotal;
-  mapping (address => uint[]) public ticketByWallet;
-  mapping (address => uint) public ticketByWalletTotal;
-  uint public funds;
-  Info public info;
+  mapping (uint => Lotto) public lotteries;
+  uint public lottoCount;
 
   enum Status {
-    NotStarted,
     Open,
     Closed,
     Completed
   }
 
-  struct Ticket {
-    address owner;
+  struct Lotto {
+    Status status;
+    address[] tickets;
+    uint id;
+    uint winnerTicket;
+    uint ticketValue;
+    uint ticketCount;
+    uint funds;
   }
 
-  struct Info {
-    uint winnerTicket;
-    bool finished;
-  }
+  event LotteryCreated (
+    uint id,
+    uint ticketValue
+  );
+
+  event LotteryDrawn (
+    uint lotteryId,
+    uint winnerTicketId
+  );
 
   event TicketAcquired (
     uint id,
+    uint lotteryId,
     address owner
   );
 
-  constructor() {
-    info = Info(0, false);
+  modifier onlyStatus(uint _lID, Status status) {
+    require(lotteries[_lID].status == status, 'lottery status do not permit this operation');
+    _;
   }
 
-  function buy() public payable {
-    require(msg.value >= ticketValue, 'check required ticket value');
-    funds += msg.value;
+  constructor() {}
 
-    uint id = ticketsTotal;
-    tickets.push(Ticket(msg.sender));
+  function buy(uint _lID) public payable onlyStatus(_lID, Status.Open) {
+    require(msg.value >= lotteries[_lID].ticketValue, 'check required ticket value');
+    lotteries[_lID].funds += msg.value;
 
-    ticketByWallet[msg.sender].push(id);
-    ticketByWalletTotal[msg.sender]++;
+    uint id = lotteries[_lID].ticketCount;
+    lotteries[_lID].tickets.push(msg.sender);
+    lotteries[_lID].ticketCount++;
 
-    ticketsTotal++;
-    emit TicketAcquired(id, msg.sender);
+    emit TicketAcquired(id, _lID, msg.sender);
   }
 
-  function draw() public onlyOwner {
-    require(!info.finished, 'lottery already finished');
-    info.winnerTicket = 1;
-    info.finished = true;
+  function draw(uint _lID) public onlyOwner onlyStatus(_lID, Status.Open) {
+    uint randomNumber = 1; // TODO: call external contract
+    lotteries[_lID].winnerTicket = randomNumber;
+    lotteries[_lID].status = Status.Closed;
+
+    emit LotteryDrawn(_lID, randomNumber);
   }
 
-  function transfer() public onlyOwner {
-    require(info.finished, 'lottery has not finished');
-    payable(tickets[info.winnerTicket].owner).transfer(funds);
-    funds = 0;
+  function transfer(uint _lID) public onlyOwner onlyStatus(_lID, Status.Closed) {
+    payable(lotteries[_lID].tickets[
+      lotteries[_lID].winnerTicket
+    ]).transfer(lotteries[_lID].funds);
+
+    lotteries[_lID].funds = 0;
+    lotteries[_lID].status = Status.Completed;
   }
 
-  function setTicketValue(uint _value) public onlyOwner {
-    ticketValue = _value;
+  function setTicketValue(uint _lID, uint _value) public onlyOwner {
+    lotteries[_lID].ticketValue = _value;
+  }
+
+  function createLottery(
+    uint _ticketValue
+  ) public onlyOwner {
+    uint id = lottoCount;
+    Lotto memory lotto;
+    lotto.id = id;
+    lotto.status = Status.Open;
+    lotto.ticketValue = _ticketValue;
+
+    lotteries[id] = lotto;
+
+    lottoCount++;
+    emit LotteryCreated(id, _ticketValue);
   }
 }
